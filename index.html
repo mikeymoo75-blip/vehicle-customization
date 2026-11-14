@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vehicle Customization Tracker</title>
+<style>
+:root {
+  --primary: #1e3a8a;
+  --primary-light: #3b82f6;
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #0ea5e9;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  padding: 1rem;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+h1 { font-size: 1.5rem; color: var(--primary); font-weight: 700; }
+.filters {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+input, select, textarea, button {
+  font: inherit;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary-light); outline-offset: 1px; }
+.btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+.btn:hover { background: #1e40af; }
+.btn-secondary { background: #64748b; }
+.btn-secondary:hover { background: #475569; }
+.btn-danger { background: var(--danger); }
+.btn-danger:hover { background: #dc2626; }
+.btn-sm { padding: 0.35rem 0.6rem; font-size: 0.875rem; }
+#search { flex: 1; min-width: 200px; }
+#vehicleList { display: grid; gap: 1rem; }
+.vehicle-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+}
+.vehicle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.vehicle-title { font-size: 1.15rem; font-weight: 600; }
+.vehicle-meta { color: var(--muted); font-size: 0.9rem; }
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+.badge-InProgress { background: #fef3c7; color: #92400e; }
+.badge-WaitingParts { background: #fee2e2; color: #991b1b; }
+.badge-Ready { background: #d1fae5; color: #065f46; }
+.badge-Complete { background: #e0e7ff; color: #3730a3; }
+.badge-Ordered { background: #fef3c7; color: #92400e; }
+.badge-Received { background: #dbeafe; color: #1e40af; }
+.badge-Installed { background: #d1fae5; color: #065f46; }
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.notes { margin: 0.75rem 0; color: var(--muted); font-size: 0.9rem; white-space: pre-wrap; }
+.parts-section { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+.parts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+}
+.parts-table th, .parts-table td {
+  text-align: left;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.parts-table th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.5);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal.open { display: flex; }
+.modal-content {
+  background: white;
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+}
+.modal h2 { margin-bottom: 1rem; font-size: 1.25rem; }
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-weight: 500; margin-bottom: 0.35rem; font-size: 0.9rem; }
+.form-row { display: flex; gap: 0.75rem; }
+.form-row .form-group { flex: 1; }
+.vin-row { display: flex; gap: 0.5rem; }
+.vin-row input { flex: 1; }
+.empty { text-align: center; color: var(--muted); padding: 3rem 1rem; }
+@media (max-width: 640px) {
+  header { flex-direction: column; align-items: stretch; }
+  .vehicle-header { flex-direction: column; }
+  .form-row { flex-direction: column; }
+  .parts-table { font-size: 0.8rem; }
+  .parts-table th, .parts-table td { padding: 0.4rem 0.25rem; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Vehicle Customization Tracker</h1>
+  <button class="btn" id="addVehicleBtn">+ Add Vehicle</button>
+</header>
+<div class="filters">
+  <input type="text" id="search" placeholder="Search VIN, stock #, make, model...">
+  <select id="statusFilter">
+    <option value="">All Statuses</option>
+    <option value="In Progress">In Progress</option>
+    <option value="Waiting Parts">Waiting Parts</option>
+    <option value="Ready">Ready</option>
+    <option value="Complete">Complete</option>
+  </select>
+</div>
+<div id="vehicleList"></div>
+
+<!-- Vehicle Modal -->
+<div class="modal" id="vehicleModal">
+  <div class="modal-content">
+    <h2 id="vehicleModalTitle">Add Vehicle</h2>
+    <form id="vehicleForm">
+      <input type="hidden" id="vehicleId">
+      <div class="form-group">
+        <label>VIN</label>
+        <div class="vin-row">
+          <input type="text" id="vin" maxlength="17" placeholder="Enter VIN" required>
+          <button type="button" class="btn btn-sm" id="decodeBtn">Decode</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Year</label>
+          <input type="text" id="year" readonly>
+        </div>
+        <div class="form-group">
+          <label>Make</label>
+          <input type="text" id="make" readonly>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Model</label>
+          <input type="text" id="model" readonly>
+        </div>
+        <div class="form-group">
+          <label>Engine</label>
+          <input type="text" id="engine" readonly>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Stock Number</label>
+        <input type="text" id="stockNumber" required>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="status" required>
+          <option value="In Progress">In Progress</option>
+          <option value="Waiting Parts">Waiting Parts</option>
+          <option value="Ready">Ready</option>
+          <option value="Complete">Complete</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="notes" rows="3"></textarea>
+      </div>
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem;">
+        <button type="button" class="btn btn-secondary" id="cancelVehicle">Cancel</button>
+        <button type="submit" class="btn">Save Vehicle</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Parts Modal -->
+<div class="modal" id="partsModal">
+  <div class="modal-content" style="max-width:720px;">
+    <h2 id="partsModalTitle">Parts</h2>
+    <div id="partsContent"></div>
+    <form id="partForm" style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
+      <input type="hidden" id="partId">
+      <input type="hidden" id="partVehicleId">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Part Number</label>
+          <input type="text" id="partNumber" required>
+        </div>
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" id="quantity" min="1" value="1" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="description" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Supplier</label>
+          <input type="text" id="supplier">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="partStatus">
+            <option value="Ordered">Ordered</option>
+            <option value="Received">Received</option>
+            <option value="Installed">Installed</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Location / Bin</label>
+        <input type="text" id="location">
+      </div>
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary btn-sm" id="cancelPart">Clear</button>
+        <button type="submit" class="btn btn-sm">Add / Update Part</button>
+      </div>
+    </form>
+    <div style="text-align:right; margin-top:1rem;">
+      <button type="button" class="btn btn-secondary" id="closeParts">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'dealershipVehicleProjects';
+let vehicles = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+let currentPartsVehicleId = null;
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(vehicles));
+  render();
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function statusClass(status) {
+  return 'badge-' + status.replace(/\s+/g, '');
+}
+
+function render() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const statusFilter = document.getElementById('statusFilter').value;
+  const list = document.getElementById('vehicleList');
+
+  const filtered = vehicles.filter(v => {
+    const text = `${v.vin} ${v.stockNumber} ${v.year} ${v.make} ${v.model} ${v.engine}`.toLowerCase();
+    const matchSearch = !search || text.includes(search);
+    const matchStatus = !statusFilter || v.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty">No vehicles found. Add one to get started.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(v => `
+    <div class="vehicle-card" data-id="${v.id}">
+      <div class="vehicle-header">
+        <div>
+          <div class="vehicle-title">${v.year || ''} ${v.make || ''} ${v.model || ''} <span style="color:var(--muted);font-weight:500">#${v.stockNumber}</span></div>
+          <div class="vehicle-meta">VIN: ${v.vin || '—'} · ${v.engine || 'Engine N/A'}</div>
+        </div>
+        <span class="badge ${statusClass(v.status)}">${v.status}</span>
+      </div>
+      ${v.notes ? `<div class="notes">${v.notes.replace(/</g,'<')}</div>` : ''}
+      <div class="actions">
+        <button class="btn btn-sm" onclick="openParts('${v.id}')">Parts (${v.parts?.length || 0})</button>
+        <button class="btn btn-sm btn-secondary" onclick="editVehicle('${v.id}')">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteVehicle('${v.id}')">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openVehicleModal(title = 'Add Vehicle', vehicle = null) {
+  document.getElementById('vehicleModalTitle').textContent = title;
+  document.getElementById('vehicleId').value = vehicle?.id || '';
+  document.getElementById('vin').value = vehicle?.vin || '';
+  document.getElementById('year').value = vehicle?.year || '';
+  document.getElementById('make').value = vehicle?.make || '';
+  document.getElementById('model').value = vehicle?.model || '';
+  document.getElementById('engine').value = vehicle?.engine || '';
+  document.getElementById('stockNumber').value = vehicle?.stockNumber || '';
+  document.getElementById('status').value = vehicle?.status || 'In Progress';
+  document.getElementById('notes').value = vehicle?.notes || '';
+  document.getElementById('vehicleModal').classList.add('open');
+}
+
+function closeVehicleModal() {
+  document.getElementById('vehicleModal').classList.remove('open');
+  document.getElementById('vehicleForm').reset();
+}
+
+async function decodeVIN() {
+  const vin = document.getElementById('vin').value.trim().toUpperCase();
+  if (!vin || vin.length < 11) {
+    alert('Enter a valid VIN (at least 11 characters)');
+    return;
+  }
+  const btn = document.getElementById('decodeBtn');
+  btn.textContent = 'Decoding...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`);
+    const data = await res.json();
+    const results = data.Results || [];
+    const get = name => results.find(r => r.Variable === name)?.Value || '';
+    document.getElementById('year').value = get('Model Year');
+    document.getElementById('make').value = get('Make');
+    document.getElementById('model').value = get('Model');
+    const disp = get('Displacement (L)');
+    const cyl = get('Engine Cylinders');
+    const engModel = get('Engine Model');
+    let engine = '';
+    if (disp) engine += disp + 'L ';
+    if (cyl) engine += cyl + ' cyl ';
+    if (engModel && engModel !== 'null') engine += engModel;
+    document.getElementById('engine').value = engine.trim() || 'N/A';
+  } catch (e) {
+    alert('Failed to decode VIN. Check connection or VIN.');
+  } finally {
+    btn.textContent = 'Decode';
+    btn.disabled = false;
+  }
+}
+
+function editVehicle(id) {
+  const v = vehicles.find(x => x.id === id);
+  if (v) openVehicleModal('Edit Vehicle', v);
+}
+
+function deleteVehicle(id) {
+  if (!confirm('Delete this vehicle and all its parts?')) return;
+  vehicles = vehicles.filter(v => v.id !== id);
+  save();
+}
+
+function openParts(vehicleId) {
+  currentPartsVehicleId = vehicleId;
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return;
+  document.getElementById('partsModalTitle').textContent = `Parts — ${v.year || ''} ${v.make || ''} ${v.model || ''} #${v.stockNumber}`;
+  document.getElementById('partVehicleId').value = vehicleId;
+  document.getElementById('partId').value = '';
+  document.getElementById('partForm').reset();
+  document.getElementById('quantity').value = 1;
+  renderParts(v);
+  document.getElementById('partsModal').classList.add('open');
+}
+
+function renderParts(v) {
+  const container = document.getElementById('partsContent');
+  if (!v.parts || v.parts.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted);">No parts added yet.</p>';
+    return;
+  }
+  container.innerHTML = `
+    <table class="parts-table">
+      <thead>
+        <tr>
+          <th>Part #</th>
+          <th>Description</th>
+          <th>Qty</th>
+          <th>Supplier</th>
+          <th>Status</th>
+          <th>Location</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${v.parts.map(p => `
+          <tr>
+            <td>${p.partNumber}</td>
+            <td>${p.description}</td>
+            <td>${p.quantity}</td>
+            <td>${p.supplier || '—'}</td>
+            <td><span class="badge ${statusClass(p.status)}">${p.status}</span></td>
+            <td>${p.location || '—'}</td>
+            <td>
+              <button class="btn btn-sm btn-secondary" onclick="editPart('${p.id}')">Edit</button>
+              <button class="btn btn-sm btn-danger" onclick="deletePart('${p.id}')">Del</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function editPart(partId) {
+  const v = vehicles.find(x => x.id === currentPartsVehicleId);
+  const p = v?.parts?.find(x => x.id === partId);
+  if (!p) return;
+  document.getElementById('partId').value = p.id;
+  document.getElementById('partNumber').value = p.partNumber;
+  document.getElementById('description').value = p.description;
+  document.getElementById('quantity').value = p.quantity;
+  document.getElementById('supplier').value = p.supplier || '';
+  document.getElementById('partStatus').value = p.status;
+  document.getElementById('location').value = p.location || '';
+}
+
+function deletePart(partId) {
+  if (!confirm('Delete this part?')) return;
+  const v = vehicles.find(x => x.id === currentPartsVehicleId);
+  if (v) {
+    v.parts = v.parts.filter(p => p.id !== partId);
+    save();
+    renderParts(v);
+  }
+}
+
+document.getElementById('addVehicleBtn').onclick = () => openVehicleModal();
+document.getElementById('cancelVehicle').onclick = closeVehicleModal;
+document.getElementById('decodeBtn').onclick = decodeVIN;
+document.getElementById('vehicleForm').onsubmit = e => {
+  e.preventDefault();
+  const id = document.getElementById('vehicleId').value || uid();
+  const vehicle = {
+    id,
+    vin: document.getElementById('vin').value.trim().toUpperCase(),
+    stockNumber: document.getElementById('stockNumber').value.trim(),
+    status: document.getElementById('status').value,
+    notes: document.getElementById('notes').value.trim(),
+    year: document.getElementById('year').value,
+    make: document.getElementById('make').value,
+    model: document.getElementById('model').value,
+    engine: document.getElementById('engine').value,
+    parts: vehicles.find(v => v.id === id)?.parts || []
+  };
+  const idx = vehicles.findIndex(v => v.id === id);
+  if (idx >= 0) vehicles[idx] = vehicle;
+  else vehicles.push(vehicle);
+  save();
+  closeVehicleModal();
+};
+
+document.getElementById('partForm').onsubmit = e => {
+  e.preventDefault();
+  const vehicleId = document.getElementById('partVehicleId').value;
+  const partId = document.getElementById('partId').value || uid();
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return;
+  if (!v.parts) v.parts = [];
+  const part = {
+    id: partId,
+    partNumber: document.getElementById('partNumber').value.trim(),
+    description: document.getElementById('description').value.trim(),
+    quantity: parseInt(document.getElementById('quantity').value, 10) || 1,
+    supplier: document.getElementById('supplier').value.trim(),
+    status: document.getElementById('partStatus').value,
+    location: document.getElementById('location').value.trim()
+  };
+  const idx = v.parts.findIndex(p => p.id === partId);
+  if (idx >= 0) v.parts[idx] = part;
+  else v.parts.push(part);
+  save();
+  renderParts(v);
+  document.getElementById('partForm').reset();
+  document.getElementById('quantity').value = 1;
+  document.getElementById('partId').value = '';
+};
+
+document.getElementById('cancelPart').onclick = () => {
+  document.getElementById('partForm').reset();
+  document.getElementById('quantity').value = 1;
+  document.getElementById('partId').value = '';
+};
+document.getElementById('closeParts').onclick = () => document.getElementById('partsModal').classList.remove('open');
+
+document.getElementById('search').oninput = render;
+document.getElementById('statusFilter').onchange = render;
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal').forEach(m => {
+  m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
+});
+
+render();
+</script>
+</body>
+</html>
